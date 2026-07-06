@@ -52,7 +52,7 @@ export function ConfirmationScreen({ submission, onNewApplication }: Props) {
         <button
           type="button"
           className="btn btn--secondary"
-          onClick={() => generatePdf(submission)}
+          onClick={() => void generatePdf(submission)}
         >
           Download PDF Summary
         </button>

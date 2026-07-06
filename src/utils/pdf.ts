@@ -1,12 +1,26 @@
 import { jsPDF } from 'jspdf';
 import type { SubmissionResult } from '../types';
 import { formatAmount } from './format';
+import adtLogoUrl from '../assets/adt-logo.png';
 
 const BRAND_TEAL = '#1496BE';
 const BRAND_GREEN = '#8CB450';
 const BRAND_CHARCOAL = '#464646';
+const LOGO_ASPECT = 263 / 85;
 
-export function generatePdf(submission: SubmissionResult): void {
+async function loadImageDataUrl(url: string): Promise<string> {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+export async function generatePdf(submission: SubmissionResult): Promise<void> {
+  const logoData = await loadImageDataUrl(adtLogoUrl);
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const { formData: d, referenceNumber, submittedAt, totalValue, convertedValue, currencyLabel } =
     submission;
@@ -43,16 +57,21 @@ export function generatePdf(submission: SubmissionResult): void {
   };
 
   // Header
+  const logoHeight = 18;
+  const logoWidth = logoHeight * LOGO_ASPECT;
+  const headerHeight = 28;
+
   doc.setFillColor(BRAND_TEAL);
-  doc.rect(0, 0, 210, 28, 'F');
-  doc.setFontSize(16);
+  doc.rect(0, 0, 210, headerHeight, 'F');
+  doc.setFillColor('#ffffff');
+  doc.rect(margin, 4, logoWidth + 4, logoHeight + 4, 'F');
+  doc.addImage(logoData, 'PNG', margin + 2, 5, logoWidth, logoHeight);
+
+  const titleX = margin + logoWidth + 10;
+  doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor('#ffffff');
-  doc.text('ADT Insurance Agency Ltd', margin, 12);
-  doc.setFontSize(10);
-  doc.text('Marine Cover Note Application', margin, 20);
-  doc.setFontSize(8);
-  doc.text('Redefining Standards', margin, 25);
+  doc.text('Marine Cover Note Application', titleX, 16);
 
   y = 36;
   addLine(`Reference: ${referenceNumber}`, 11, true, BRAND_TEAL);

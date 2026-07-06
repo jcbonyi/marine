@@ -48,49 +48,15 @@ body {
   margin: 0 auto;
 }
 
-.header__brand {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.logo-placeholder {
-  width: 56px;
-  height: 56px;
+.header__logo {
+  display: block;
+  height: 64px;
+  width: auto;
+  max-width: 100%;
   background: var(--adt-white);
   border-radius: var(--adt-radius);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border: 2px solid var(--adt-green);
-}
-
-.logo-placeholder__text {
-  font-weight: 800;
-  font-size: 1.1rem;
-  color: var(--adt-teal);
-  letter-spacing: -0.5px;
-}
-
-.header__titles {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.header__company {
-  font-size: 1.15rem;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.header__tagline {
-  font-size: 0.8rem;
-  opacity: 0.9;
-  font-style: italic;
-  color: var(--adt-green);
-  font-weight: 500;
+  padding: 0.35rem 0.75rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
 }
 
 /* Main */

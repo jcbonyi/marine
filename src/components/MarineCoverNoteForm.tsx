@@ -6,6 +6,7 @@ import { generatePdf } from '../utils/pdf';
 import { buildSubmission, submitForm } from '../utils/submit';
 import { getInitialFormData, validateForm } from '../utils/validation';
 import { ConfirmationScreen } from './ConfirmationScreen';
+import adtLogo from '../assets/adt-logo.png';
 import '../MarineCoverNoteForm.css';
 
 const UNDERWRITERS = [
@@ -717,7 +718,7 @@ export function MarineCoverNoteForm() {
             <button
               type="button"
               className="btn btn--secondary"
-              onClick={() => generatePdf(buildSubmission(formData))}
+              onClick={() => void generatePdf(buildSubmission(formData))}
             >
               Preview PDF
             </button>
@@ -736,15 +737,11 @@ function Header() {
   return (
     <header className="header">
       <div className="header__inner">
-        <div className="header__brand">
-          <div className="logo-placeholder" aria-label="ADT Insurance Agency logo">
-            <span className="logo-placeholder__text">ADT</span>
-          </div>
-          <div className="header__titles">
-            <span className="header__company">ADT Insurance Agency Ltd</span>
-            <span className="header__tagline">Redefining Standards</span>
-          </div>
-        </div>
+        <img
+          src={adtLogo}
+          alt="ADT Insurance — Redefining Standards"
+          className="header__logo"
+        />
       </div>
     </header>
   );
