@@ -95,7 +95,6 @@ export function getInitialFormData(): FormData {
     freight: '0',
     duty: '0',
     idfRdlCharges: '0',
-    idfRdlOverridden: false,
     clearingCharges: '0',
     markup: '0',
     exchangeRate: '',

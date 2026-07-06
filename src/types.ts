@@ -30,7 +30,6 @@ export interface FormData {
   freight: string;
   duty: string;
   idfRdlCharges: string;
-  idfRdlOverridden: boolean;
   clearingCharges: string;
   markup: string;
   exchangeRate: string;

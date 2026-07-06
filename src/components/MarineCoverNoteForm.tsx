@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactElement, type ReactNode } from 'react';
+import { useCallback, useRef, useState, type ChangeEvent, type FormEvent, type ReactElement, type ReactNode } from 'react';
 import type { DocumentKey, FormData, FormDocumentErrors, FormDocuments, FormErrors, SubmissionResult } from '../types';
 import { calculateTotals } from '../utils/calculations';
 import {
@@ -49,16 +49,6 @@ export function MarineCoverNoteForm() {
   const totals = calculateTotals(formData);
   const currencyLabel = getCurrencyLabel(formData.currency, formData.currencyOther);
 
-  useEffect(() => {
-    if (!formData.idfRdlOverridden) {
-      const auto = totals.autoIdfRdl;
-      setFormData((prev) => ({
-        ...prev,
-        idfRdlCharges: formatAmount(auto),
-      }));
-    }
-  }, [formData.fobPrice, formData.freight, formData.idfRdlOverridden, totals.autoIdfRdl]);
-
   const updateField = useCallback(
     (field: keyof FormData, value: string | boolean) => {
       setFormData((prev) => ({ ...prev, [field]: value }));
@@ -106,16 +96,6 @@ export function MarineCoverNoteForm() {
 
   const handleDocumentBlur = (field: DocumentKey) => () => {
     setDocumentsTouched((prev) => ({ ...prev, [field]: true }));
-  };
-
-  const handleIdfRdlChange = (e: ChangeEvent<HTMLInputElement>) => {
-    updateField('idfRdlOverridden', true);
-    handleAmountChange('idfRdlCharges')(e);
-  };
-
-  const resetIdfRdl = () => {
-    updateField('idfRdlOverridden', false);
-    updateField('idfRdlCharges', formatAmount(totals.autoIdfRdl));
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -433,25 +413,17 @@ export function MarineCoverNoteForm() {
 
               <FormField
                 label={`IDF (2.25%) & RDL (1.5%) on C&F (${currencyLabel})`}
-                hint={`C&F = ${formatAmount(totals.cfValue)}. Auto-calculated; editable.`}
                 error={showError('idfRdlCharges')}
               >
-                <div className="input-with-action">
-                  <input
-                    id="idfRdlCharges"
-                    type="text"
-                    inputMode="decimal"
-                    value={formData.idfRdlCharges}
-                    onChange={handleIdfRdlChange}
-                    onBlur={handleBlur('idfRdlCharges')}
-                    aria-invalid={!!showError('idfRdlCharges')}
-                  />
-                  {formData.idfRdlOverridden && (
-                    <button type="button" className="btn-link" onClick={resetIdfRdl}>
-                      Reset to auto
-                    </button>
-                  )}
-                </div>
+                <input
+                  id="idfRdlCharges"
+                  type="text"
+                  inputMode="decimal"
+                  value={formData.idfRdlCharges}
+                  onChange={handleAmountChange('idfRdlCharges')}
+                  onBlur={handleBlur('idfRdlCharges')}
+                  aria-invalid={!!showError('idfRdlCharges')}
+                />
               </FormField>
 
               <FormField
