@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import type { SubmissionResult } from '../types';
+import { DOCUMENT_LABELS } from './documents';
 import { formatAmount } from './format';
 import adtLogoUrl from '../assets/adt-logo.png';
 
@@ -22,7 +23,7 @@ async function loadImageDataUrl(url: string): Promise<string> {
 export async function generatePdf(submission: SubmissionResult): Promise<void> {
   const logoData = await loadImageDataUrl(adtLogoUrl);
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  const { formData: d, referenceNumber, submittedAt, totalValue, convertedValue, currencyLabel } =
+  const { formData: d, documents, referenceNumber, submittedAt, totalValue, convertedValue, currencyLabel } =
     submission;
   const margin = 15;
   let y = margin;
@@ -115,7 +116,8 @@ export async function generatePdf(submission: SubmissionResult): Promise<void> {
 
   addSection('4. Shipment Details');
   addField('Mode', d.shipmentMode);
-  addField('Place of Loading', d.placeOfLoading);
+  addField('Country of Origin', d.countryOfOrigin);
+  addField('Port of Loading', d.placeOfLoading);
   addField('Transshipment', d.transshipmentAt);
   addField('Port of Clearance', d.portOfClearance);
   addField('Cover Required Up To', d.coverRequiredUpTo);
@@ -136,6 +138,12 @@ export async function generatePdf(submission: SubmissionResult): Promise<void> {
     d.underwriter === 'Other' ? d.underwriterOther : d.underwriter,
   );
   addField('Open Policy No.', d.openPolicyNo);
+
+  addSection('7. Supporting Documents');
+  (Object.keys(DOCUMENT_LABELS) as Array<keyof typeof DOCUMENT_LABELS>).forEach((key) => {
+    const file = documents[key];
+    addLine(`${DOCUMENT_LABELS[key]}: ${file ? file.name : 'Not uploaded'}`, 9);
+  });
 
   y = 285;
   doc.setFontSize(7);

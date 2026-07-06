@@ -1,4 +1,5 @@
 import type { SubmissionResult } from '../types';
+import { DOCUMENT_LABELS } from '../utils/documents';
 import { formatAmount } from '../utils/format';
 import { generatePdf } from '../utils/pdf';
 
@@ -8,7 +9,11 @@ interface Props {
 }
 
 export function ConfirmationScreen({ submission, onNewApplication }: Props) {
-  const { referenceNumber, formData, totalValue, convertedValue, currencyLabel } = submission;
+  const { referenceNumber, formData, documents, totalValue, convertedValue, currencyLabel } =
+    submission;
+  const uploadedDocuments = (Object.keys(DOCUMENT_LABELS) as Array<keyof typeof DOCUMENT_LABELS>)
+    .map((key) => documents[key])
+    .filter(Boolean);
 
   return (
     <div className="confirmation" role="status" aria-live="polite">
@@ -45,6 +50,14 @@ export function ConfirmationScreen({ submission, onNewApplication }: Props) {
         <div className="summary-row">
           <span>B/L or AWB No.</span>
           <strong>{formData.billOfLadingNo}</strong>
+        </div>
+        <div className="summary-row">
+          <span>Documents uploaded</span>
+          <strong>
+            {uploadedDocuments.length > 0
+              ? `${uploadedDocuments.length} file${uploadedDocuments.length === 1 ? '' : 's'}`
+              : 'None'}
+          </strong>
         </div>
       </div>
 

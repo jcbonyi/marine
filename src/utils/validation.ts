@@ -48,7 +48,7 @@ export function validateForm(data: FormData): FormErrors {
     errors.currencyOther = 'Please specify currency';
   }
 
-  if (!data.placeOfLoading.trim()) errors.placeOfLoading = 'Place of loading is required';
+  if (!data.placeOfLoading.trim()) errors.placeOfLoading = 'Port of loading is required';
   if (!data.portOfClearance.trim()) errors.portOfClearance = 'Port of clearance is required';
   if (!data.coverRequiredUpTo.trim()) errors.coverRequiredUpTo = 'Final destination is required';
   if (!data.billOfLadingNo.trim()) errors.billOfLadingNo = 'Bill of Lading / AWB number is required';
@@ -102,6 +102,7 @@ export function getInitialFormData(): FormData {
 
     shipmentMode: 'Sea',
     placeOfLoading: '',
+    countryOfOrigin: '',
     transshipmentAt: 'None',
     portOfClearance: '',
     coverRequiredUpTo: '',

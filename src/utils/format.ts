@@ -18,7 +18,7 @@ export function formatInputDisplay(value: string): string {
   if (cleaned === '' || cleaned === '.') return value;
   const parts = cleaned.split('.');
   const intPart = parts[0].replace(/\D/g, '');
-  const decPart = parts[1] !== undefined ? parts[1].replace(/\D/g, '').slice(0, 2) : undefined;
+  const decPart = parts[1] !== undefined ? parts[1].replace(/\D/g, '').slice(0, 4) : undefined;
   const formattedInt = intPart ? parseInt(intPart, 10).toLocaleString('en-US') : '';
   if (decPart !== undefined) {
     return `${formattedInt}.${decPart}`;

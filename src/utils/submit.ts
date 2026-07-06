@@ -1,5 +1,6 @@
-import type { SubmissionResult } from '../types';
+import type { FormDocuments, SubmissionResult } from '../types';
 import { calculateTotals } from './calculations';
+import { toSubmissionDocuments } from './documents';
 import { generateReferenceNumber, getCurrencyLabel } from './format';
 
 const RECIPIENTS = [
@@ -10,7 +11,10 @@ const RECIPIENTS = [
   'zafir@adtinsurance.co.ke',
 ];
 
-export async function submitForm(result: SubmissionResult): Promise<void> {
+export async function submitForm(
+  result: SubmissionResult,
+  documents: FormDocuments,
+): Promise<void> {
   const endpoint = import.meta.env.VITE_SUBMIT_URL as string | undefined;
 
   const payload = {
@@ -25,11 +29,28 @@ export async function submitForm(result: SubmissionResult): Promise<void> {
     return;
   }
 
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+  const hasFiles = Object.values(documents).some(Boolean);
+  let response: Response;
+
+  if (hasFiles) {
+    const body = new FormData();
+    body.append('payload', JSON.stringify(payload));
+
+    (Object.entries(documents) as [keyof FormDocuments, File | null][]).forEach(([key, file]) => {
+      if (file) body.append(key, file, file.name);
+    });
+
+    response = await fetch(endpoint, {
+      method: 'POST',
+      body,
+    });
+  } else {
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  }
 
   if (!response.ok) {
     throw new Error(`Submission failed (${response.status}). Please try again or contact ADT.`);
@@ -42,6 +63,7 @@ function simulateNetworkDelay(): Promise<void> {
 
 export function buildSubmission(
   formData: SubmissionResult['formData'],
+  documents: FormDocuments,
 ): SubmissionResult {
   const totals = calculateTotals(formData);
   const currencyLabel = getCurrencyLabel(formData.currency, formData.currencyOther);
@@ -50,6 +72,7 @@ export function buildSubmission(
     referenceNumber: generateReferenceNumber(),
     submittedAt: new Date().toISOString(),
     formData,
+    documents: toSubmissionDocuments(documents),
     totalValue: totals.totalValue,
     convertedValue: totals.convertedValue,
     currencyLabel,

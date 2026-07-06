@@ -1,12 +1,20 @@
-import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent, type ReactElement, type ReactNode } from 'react';
-import type { FormData, FormErrors, SubmissionResult } from '../types';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactElement, type ReactNode } from 'react';
+import type { DocumentKey, FormData, FormDocumentErrors, FormDocuments, FormErrors, SubmissionResult } from '../types';
 import { calculateTotals } from '../utils/calculations';
+import {
+  ACCEPTED_FILE_TYPES,
+  DOCUMENT_LABELS,
+  formatFileSize,
+  getInitialDocuments,
+  validateDocuments,
+} from '../utils/documents';
 import { formatAmount, formatInputDisplay, getCurrencyLabel } from '../utils/format';
 import { generatePdf } from '../utils/pdf';
 import { buildSubmission, submitForm } from '../utils/submit';
 import { getInitialFormData, validateForm } from '../utils/validation';
 import { ConfirmationScreen } from './ConfirmationScreen';
 import adtLogo from '../assets/adt-logo.png';
+import { COUNTRIES } from '../data/countries';
 import '../MarineCoverNoteForm.css';
 
 const UNDERWRITERS = [
@@ -25,11 +33,15 @@ const UNDERWRITERS = [
 
 const PACKING_TYPES = ['Loose', 'Palletized', 'Cartons', 'Crates', 'Other'] as const;
 const SHIPMENT_MODES = ['Sea', 'Air', 'Road', 'Rail'] as const;
+const DOCUMENT_KEYS = Object.keys(DOCUMENT_LABELS) as DocumentKey[];
 
 export function MarineCoverNoteForm() {
   const [formData, setFormData] = useState<FormData>(getInitialFormData);
+  const [documents, setDocuments] = useState<FormDocuments>(getInitialDocuments);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [documentErrors, setDocumentErrors] = useState<FormDocumentErrors>({});
   const [touched, setTouched] = useState<Partial<Record<keyof FormData, boolean>>>({});
+  const [documentsTouched, setDocumentsTouched] = useState<Partial<Record<DocumentKey, boolean>>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submission, setSubmission] = useState<SubmissionResult | null>(null);
@@ -73,6 +85,29 @@ export function MarineCoverNoteForm() {
   const showError = (field: keyof FormData) =>
     (touched[field] || submitting) && errors[field] ? errors[field] : undefined;
 
+  const showDocumentError = (field: DocumentKey) =>
+    (documentsTouched[field] || submitting) && documentErrors[field]
+      ? documentErrors[field]
+      : undefined;
+
+  const updateDocument = useCallback(
+    (field: DocumentKey, file: File | null) => {
+      setDocuments((prev) => ({ ...prev, [field]: file }));
+      if (documentErrors[field]) {
+        setDocumentErrors((prev) => {
+          const next = { ...prev };
+          delete next[field];
+          return next;
+        });
+      }
+    },
+    [documentErrors],
+  );
+
+  const handleDocumentBlur = (field: DocumentKey) => () => {
+    setDocumentsTouched((prev) => ({ ...prev, [field]: true }));
+  };
+
   const handleIdfRdlChange = (e: ChangeEvent<HTMLInputElement>) => {
     updateField('idfRdlOverridden', true);
     handleAmountChange('idfRdlCharges')(e);
@@ -87,15 +122,23 @@ export function MarineCoverNoteForm() {
     e.preventDefault();
     setSubmitError('');
     const validationErrors = validateForm(formData);
+    const docValidationErrors = validateDocuments(documents);
     setErrors(validationErrors);
+    setDocumentErrors(docValidationErrors);
     setTouched(
       Object.keys(formData).reduce(
         (acc, key) => ({ ...acc, [key]: true }),
         {} as Partial<Record<keyof FormData, boolean>>,
       ),
     );
+    setDocumentsTouched(
+      DOCUMENT_KEYS.reduce(
+        (acc, key) => ({ ...acc, [key]: true }),
+        {} as Partial<Record<DocumentKey, boolean>>,
+      ),
+    );
 
-    if (Object.keys(validationErrors).length > 0) {
+    if (Object.keys(validationErrors).length > 0 || Object.keys(docValidationErrors).length > 0) {
       const firstError = document.querySelector('[aria-invalid="true"]');
       firstError?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
@@ -103,8 +146,8 @@ export function MarineCoverNoteForm() {
 
     setSubmitting(true);
     try {
-      const result = buildSubmission(formData);
-      await submitForm(result);
+      const result = buildSubmission(formData, documents);
+      await submitForm(result, documents);
       setSubmission(result);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
@@ -126,8 +169,11 @@ export function MarineCoverNoteForm() {
             onNewApplication={() => {
               setSubmission(null);
               setFormData(getInitialFormData());
+              setDocuments(getInitialDocuments());
               setErrors({});
+              setDocumentErrors({});
               setTouched({});
+              setDocumentsTouched({});
             }}
           />
         </main>
@@ -444,7 +490,7 @@ export function MarineCoverNoteForm() {
                   id="exchangeRate"
                   type="text"
                   inputMode="decimal"
-                  placeholder="e.g. 129.50"
+                  placeholder="e.g. 129.5037"
                   value={formData.exchangeRate}
                   onChange={handleAmountChange('exchangeRate')}
                   onBlur={handleBlur('exchangeRate')}
@@ -485,8 +531,23 @@ export function MarineCoverNoteForm() {
                 </select>
               </FormField>
 
+              <FormField label="Country of origin">
+                <select
+                  id="countryOfOrigin"
+                  value={formData.countryOfOrigin}
+                  onChange={(e) => updateField('countryOfOrigin', e.target.value)}
+                >
+                  <option value="">— Select country —</option>
+                  {COUNTRIES.map((country) => (
+                    <option key={country} value={country}>
+                      {country}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+
               <FormField
-                label="Place of loading"
+                label="Port of loading"
                 required
                 error={showError('placeOfLoading')}
               >
@@ -708,6 +769,29 @@ export function MarineCoverNoteForm() {
             </div>
           </fieldset>
 
+          {/* Section 7 */}
+          <fieldset className="form-section">
+            <legend>7. Supporting Documents</legend>
+            <p className="section-intro">
+              Upload copies of the following documents. Accepted formats: PDF, Word, JPG, PNG, or
+              WEBP (max 10 MB each).
+            </p>
+            <div className="form-grid">
+              {DOCUMENT_KEYS.map((key) => (
+                <DocumentUploadField
+                  key={key}
+                  id={key}
+                  label={DOCUMENT_LABELS[key]}
+                  file={documents[key]}
+                  error={showDocumentError(key)}
+                  onChange={(file) => updateDocument(key, file)}
+                  onClear={() => updateDocument(key, null)}
+                  onBlur={handleDocumentBlur(key)}
+                />
+              ))}
+            </div>
+          </fieldset>
+
           {submitError && (
             <div className="form-error-banner" role="alert">
               {submitError}
@@ -718,7 +802,7 @@ export function MarineCoverNoteForm() {
             <button
               type="button"
               className="btn btn--secondary"
-              onClick={() => void generatePdf(buildSubmission(formData))}
+              onClick={() => void generatePdf(buildSubmission(formData, documents))}
             >
               Preview PDF
             </button>
@@ -767,6 +851,86 @@ function Footer() {
         </p>
       </div>
     </footer>
+  );
+}
+
+function DocumentUploadField({
+  id,
+  label,
+  file,
+  error,
+  onChange,
+  onClear,
+  onBlur,
+}: {
+  id: DocumentKey;
+  label: string;
+  file: File | null;
+  error?: string;
+  onChange: (file: File | null) => void;
+  onClear: () => void;
+  onBlur: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    onChange(e.target.files?.[0] ?? null);
+  };
+
+  const handleClear = () => {
+    onClear();
+    if (inputRef.current) inputRef.current.value = '';
+  };
+
+  return (
+    <div className="form-field form-field--full document-upload">
+      <label htmlFor={id}>{label}</label>
+      <div className={`document-upload__control${error ? ' document-upload__control--error' : ''}`}>
+        <input
+          ref={inputRef}
+          id={id}
+          type="file"
+          className="document-upload__input"
+          accept={ACCEPTED_FILE_TYPES}
+          onChange={handleChange}
+          onBlur={onBlur}
+          aria-invalid={!!error}
+        />
+        {file ? (
+          <div className="document-upload__selected">
+            <div className="document-upload__meta">
+              <span className="document-upload__filename">{file.name}</span>
+              <span className="document-upload__size">{formatFileSize(file.size)}</span>
+            </div>
+            <div className="document-upload__actions">
+              <button
+                type="button"
+                className="btn-link"
+                onClick={() => inputRef.current?.click()}
+              >
+                Replace
+              </button>
+              <button type="button" className="btn-link document-upload__remove" onClick={handleClear}>
+                Remove
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="document-upload__trigger"
+            onClick={() => inputRef.current?.click()}
+          >
+            Choose file
+          </button>
+        )}
+      </div>
+      {error && (
+        <span className="form-error" role="alert">
+          {error}
+        </span>
+      )}
+    </div>
   );
 }
 

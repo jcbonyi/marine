@@ -38,6 +38,7 @@ export interface FormData {
   // Shipment Details
   shipmentMode: ShipmentMode;
   placeOfLoading: string;
+  countryOfOrigin: string;
   transshipmentAt: string;
   portOfClearance: string;
   coverRequiredUpTo: string;
@@ -60,10 +61,35 @@ export interface FormData {
 
 export type FormErrors = Partial<Record<keyof FormData, string>>;
 
+export type DocumentKey = 'proformaInvoice' | 'idf' | 'billOfLading' | 'packingList';
+
+export interface FormDocuments {
+  proformaInvoice: File | null;
+  idf: File | null;
+  billOfLading: File | null;
+  packingList: File | null;
+}
+
+export type FormDocumentErrors = Partial<Record<DocumentKey, string>>;
+
+export interface UploadedDocumentInfo {
+  name: string;
+  size: number;
+  type: string;
+}
+
+export interface SubmissionDocuments {
+  proformaInvoice: UploadedDocumentInfo | null;
+  idf: UploadedDocumentInfo | null;
+  billOfLading: UploadedDocumentInfo | null;
+  packingList: UploadedDocumentInfo | null;
+}
+
 export interface SubmissionResult {
   referenceNumber: string;
   submittedAt: string;
   formData: FormData;
+  documents: SubmissionDocuments;
   totalValue: number;
   convertedValue: number;
   currencyLabel: string;
