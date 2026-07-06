@@ -166,6 +166,7 @@ export function MarineCoverNoteForm() {
         <main className="main">
           <ConfirmationScreen
             submission={submission}
+            documents={documents}
             onNewApplication={() => {
               setSubmission(null);
               setFormData(getInitialFormData());
@@ -802,7 +803,7 @@ export function MarineCoverNoteForm() {
             <button
               type="button"
               className="btn btn--secondary"
-              onClick={() => void generatePdf(buildSubmission(formData, documents))}
+              onClick={() => void generatePdf(buildSubmission(formData, documents), documents)}
             >
               Preview PDF
             </button>

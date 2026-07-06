@@ -1,7 +1,8 @@
 import { jsPDF } from 'jspdf';
-import type { SubmissionResult } from '../types';
+import type { FormDocuments, SubmissionResult } from '../types';
 import { DOCUMENT_LABELS } from './documents';
 import { formatAmount } from './format';
+import { appendDocumentsToPdf } from './pdfDocuments';
 import adtLogoUrl from '../assets/adt-logo.png';
 
 const BRAND_TEAL = '#1496BE';
@@ -20,7 +21,7 @@ async function loadImageDataUrl(url: string): Promise<string> {
   });
 }
 
-export async function generatePdf(submission: SubmissionResult): Promise<void> {
+async function buildSummaryPdfBytes(submission: SubmissionResult): Promise<Uint8Array> {
   const logoData = await loadImageDataUrl(adtLogoUrl);
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const { formData: d, documents, referenceNumber, submittedAt, totalValue, convertedValue, currencyLabel } =
@@ -57,7 +58,6 @@ export async function generatePdf(submission: SubmissionResult): Promise<void> {
     addLine(`${label}: ${value}`, 9);
   };
 
-  // Header
   const logoHeight = 18;
   const logoWidth = logoHeight * LOGO_ASPECT;
   const headerHeight = 28;
@@ -140,10 +140,18 @@ export async function generatePdf(submission: SubmissionResult): Promise<void> {
   addField('Open Policy No.', d.openPolicyNo);
 
   addSection('7. Supporting Documents');
-  (Object.keys(DOCUMENT_LABELS) as Array<keyof typeof DOCUMENT_LABELS>).forEach((key) => {
-    const file = documents[key];
-    addLine(`${DOCUMENT_LABELS[key]}: ${file ? file.name : 'Not uploaded'}`, 9);
-  });
+  const uploadedCount = (Object.keys(DOCUMENT_LABELS) as Array<keyof typeof DOCUMENT_LABELS>).filter(
+    (key) => documents[key],
+  ).length;
+  if (uploadedCount === 0) {
+    addLine('No supporting documents uploaded.', 9);
+  } else {
+    addLine(`${uploadedCount} document(s) included after this summary.`, 9);
+    (Object.keys(DOCUMENT_LABELS) as Array<keyof typeof DOCUMENT_LABELS>).forEach((key) => {
+      const file = documents[key];
+      addLine(`${DOCUMENT_LABELS[key]}: ${file ? file.name : 'Not uploaded'}`, 9);
+    });
+  }
 
   y = 285;
   doc.setFontSize(7);
@@ -154,5 +162,36 @@ export async function generatePdf(submission: SubmissionResult): Promise<void> {
     y,
   );
 
-  doc.save(`Marine-Cover-Note-${referenceNumber}.pdf`);
+  return new Uint8Array(doc.output('arraybuffer'));
+}
+
+export async function buildPdfBytes(
+  submission: SubmissionResult,
+  documents: FormDocuments = getEmptyDocuments(),
+): Promise<Uint8Array> {
+  const summaryBytes = await buildSummaryPdfBytes(submission);
+  return appendDocumentsToPdf(summaryBytes, documents);
+}
+
+function getEmptyDocuments(): FormDocuments {
+  return {
+    proformaInvoice: null,
+    idf: null,
+    billOfLading: null,
+    packingList: null,
+  };
+}
+
+export async function generatePdf(
+  submission: SubmissionResult,
+  documents: FormDocuments = getEmptyDocuments(),
+): Promise<void> {
+  const pdfBytes = await buildPdfBytes(submission, documents);
+  const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `Marine-Cover-Note-${submission.referenceNumber}.pdf`;
+  link.click();
+  URL.revokeObjectURL(url);
 }

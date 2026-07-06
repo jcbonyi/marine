@@ -1,6 +1,7 @@
 import type { FormDocuments, SubmissionResult } from '../types';
 import { calculateTotals } from './calculations';
 import { toSubmissionDocuments } from './documents';
+import { buildPdfBytes } from './pdf';
 import { generateReferenceNumber, getCurrencyLabel } from './format';
 
 const RECIPIENTS = [
@@ -11,11 +12,18 @@ const RECIPIENTS = [
   'zafir@adtinsurance.co.ke',
 ];
 
+function getSubmitEndpoint(): string | undefined {
+  const configured = import.meta.env.VITE_SUBMIT_URL as string | undefined;
+  if (configured) return configured;
+  if (import.meta.env.PROD) return '/api/submit';
+  return undefined;
+}
+
 export async function submitForm(
   result: SubmissionResult,
   documents: FormDocuments,
 ): Promise<void> {
-  const endpoint = import.meta.env.VITE_SUBMIT_URL as string | undefined;
+  const endpoint = getSubmitEndpoint();
 
   const payload = {
     ...result,
@@ -24,33 +32,28 @@ export async function submitForm(
   };
 
   if (!endpoint) {
-    console.info('Form submission (no VITE_SUBMIT_URL configured):', payload);
+    console.info('Form submission (no submit endpoint configured):', payload);
     await simulateNetworkDelay();
     return;
   }
 
-  const hasFiles = Object.values(documents).some(Boolean);
-  let response: Response;
+  const pdfBytes = await buildPdfBytes(result, documents);
+  const body = new FormData();
+  body.append('payload', JSON.stringify(payload));
+  body.append(
+    'applicationSummary',
+    new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' }),
+    `Marine-Cover-Note-${result.referenceNumber}.pdf`,
+  );
 
-  if (hasFiles) {
-    const body = new FormData();
-    body.append('payload', JSON.stringify(payload));
+  (Object.entries(documents) as [keyof FormDocuments, File | null][]).forEach(([key, file]) => {
+    if (file) body.append(key, file, file.name);
+  });
 
-    (Object.entries(documents) as [keyof FormDocuments, File | null][]).forEach(([key, file]) => {
-      if (file) body.append(key, file, file.name);
-    });
-
-    response = await fetch(endpoint, {
-      method: 'POST',
-      body,
-    });
-  } else {
-    response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-  }
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    body,
+  });
 
   if (!response.ok) {
     throw new Error(`Submission failed (${response.status}). Please try again or contact ADT.`);

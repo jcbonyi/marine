@@ -1,14 +1,15 @@
-import type { SubmissionResult } from '../types';
+import type { FormDocuments, SubmissionResult } from '../types';
 import { DOCUMENT_LABELS } from '../utils/documents';
 import { formatAmount } from '../utils/format';
 import { generatePdf } from '../utils/pdf';
 
 interface Props {
   submission: SubmissionResult;
+  documents: FormDocuments;
   onNewApplication: () => void;
 }
 
-export function ConfirmationScreen({ submission, onNewApplication }: Props) {
+export function ConfirmationScreen({ submission, documents: uploadedFiles, onNewApplication }: Props) {
   const { referenceNumber, formData, documents, totalValue, convertedValue, currencyLabel } =
     submission;
   const uploadedDocuments = (Object.keys(DOCUMENT_LABELS) as Array<keyof typeof DOCUMENT_LABELS>)
@@ -65,7 +66,7 @@ export function ConfirmationScreen({ submission, onNewApplication }: Props) {
         <button
           type="button"
           className="btn btn--secondary"
-          onClick={() => void generatePdf(submission)}
+          onClick={() => void generatePdf(submission, uploadedFiles)}
         >
           Download PDF Summary
         </button>
